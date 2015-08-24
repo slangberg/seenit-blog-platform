@@ -1,0 +1,29 @@
+{
+  "name": "seenit-blog-platform",
+  "version": "1.0.0",
+  "description": "reddit to blog framework",
+  "main": "server.js",
+  "dependencies": {
+    "bower": "^1.4.1",
+    "express": "^4.13.3",
+    "request": "^2.61.0",
+    "lwip": "^0.0.7",
+    "simpledownload": "^1.0.3",
+    "underscore": "^1.8.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "run",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slangberg/seenit-blog-platform.git"
+  },
+  "author": "slangberg",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/slangberg/seenit-blog-platform/issues"
+  },
+  "homepage": "https://github.com/slangberg/seenit-blog-platform#readme"
+}

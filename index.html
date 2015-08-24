@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html ng-app='reddi-app' ng-controller="MainCtrl">
+<head>
+	<title>Blog Page</title>
+	<script src="bower_components/angular/angular.min.js"></script>
+	<script src="bower_components/ngInfiniteScroll/build/ng-infinite-scroll.min.js"></script>
+	<script src="public/app.js"></script>
+	<link rel="stylesheet" href="public/css/style.css">
+	<link href='http://fonts.googleapis.com/css?family=Rubik:400,500,500italic,400italic' rel='stylesheet' type='text/css'>
+</head>
+<body>
+	<div class="page">
+		<header>
+			<h1>Reddi Blog</h1>
+		</header>
+			<blogroll>
+				<ul class="blog-role">
+					<li ng-repeat="post in postsData" class="blog-item">
+						<div class="blog-img-holder">
+							<a class="blog-img-link">
+								<img ng-src="{{post.imgurl}}" class="blog-img"/>
+							</a>
+						</div>
+						<div class="blog-info-holder">
+							<a class="post-tile" ng-href="{{post.permalink}}"><h2>{{post.title}}</h2></a>
+						</div>
+					</li>
+				</ul>
+			</blogroll>
+	</div>
+</body>
+</html>

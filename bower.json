@@ -1,0 +1,22 @@
+{
+  "name": "seenit blog platform",
+  "version": "0.0.0",
+  "homepage": "https://github.com/slangberg/seenit-blog-platform",
+  "authors": [
+    "slangberg <samuel.langberg@gmail.com>"
+  ],
+  "description": "Reddit blog platform",
+  "main": "server.js",
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "angular": "~1.4.4",
+    "ngInfiniteScroll": "1.0.0"
+  }
+}
