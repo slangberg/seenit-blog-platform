@@ -4,21 +4,16 @@ var express = require('express');
 var download = require('simpledownload');
 var fs = require("fs");
 var imgsizer = require('lwip')
+var reddit = require('redditor');
 var _ = require('underscore');
+
 
 
 var app = express();
 app.use('/bower_components',  express.static(__dirname + '/bower_components'));
 app.use('/public',  express.static(__dirname + '/public'));
 
-var submitted = {
-  protocol: "http:",
-  host: "reddit.com",
-  pathname: '/user/qizzer/submitted.json',
-};
-
-
-var blogData = {
+app.locals.blogData = {
   posts: {},
   after_post: null,
   before_post:null,
@@ -28,24 +23,39 @@ var blogData = {
 
 
 app.get("/json",function(req,res){
-  var submittedURL = url.format(submitted);
-  
-  request(submittedURL, function(error, response, body) {
-    var posts = JSON.parse(body);
-    blogData.after_posts = posts.data.after;
-    blogData.before_posts = posts.data.before;
-    returnRole(posts.data.children);
-    res.send(blogData);
+  //var submittedURL = url.format(submitted);
+  // request(submittedURL, function(error, response, body) {
+  //   var posts = JSON.parse(body);
+  //   blogData.after_posts = posts.data.after;
+  //   blogData.before_posts = posts.data.before;
+  //   returnRole(posts.data.children);
+  //   res.send(blogData);
+  // });
+
+});
+
+app.get("/signin",function(req,res){
+
+
+  reddit({ username: 'qizzer', password: 'inside'}, function(err, authorized) {
+      if(err) console.log(err);
+      authorized.get('/user/qizzer/submitted.json', function(err, response) {
+        if(err) console.log(err);
+        app.locals.blogData.after_posts = response.data.after;
+        app.locals.blogData.before_posts = response.data.before;
+        returnRole(response.data.children);
+        res.send(app.locals.blogData);
+      });
   });
 
 
-  
 });
 
 
 app.get("/",function(req,res){
   res.sendFile(__dirname + "/index.html");
 });
+
 
 
 var returnRole = function(posts,comments){
@@ -76,7 +86,7 @@ var returnRole = function(posts,comments){
 
  
   var downed = downloadImgs(cleaned);
-  blogData.posts = downed;
+  app.locals.blogData.posts = downed;
 
 }
 
@@ -86,7 +96,7 @@ var downloadImgs = function(posts){
     var type = post.imgurl.split('.').pop();
     type = type.split('?')[0];
     var name = post.title.replace(" ", "-");
-    var url = '/public/images/'+name+"."+type;
+    var url = '/public/images/'+post.id+"."+type;
 
     fs.open(__dirname + url, "r+", function(error, fd){
       if(error){
@@ -106,8 +116,9 @@ var downloadImgs = function(posts){
             } 
 
             if(image.width() > 980){
-              var shrinkval = image.width() - 980;
-              image.resize(980, image.height() - shrinkval, function(err,image){
+              var shrinkval = 980/image.width();
+              var newheight = Math.round(image.height()*shrinkval);
+              image.resize(980, newheight, function(err,image){
                 image.writeFile(__dirname + url, function(err){
                   if (err){
                     console.log("sizer write");

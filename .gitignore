@@ -26,3 +26,4 @@ build/Release
 # Dependency directory
 bower_components
 node_modules
+public/images
