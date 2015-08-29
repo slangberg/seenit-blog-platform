@@ -6,20 +6,20 @@ var fs = require("fs");
 var imgsizer = require('lwip')
 var reddit = require('redditor');
 var _ = require('underscore');
-
-
+var bodyParser = require('body-parser')
+var Store = require('data-store');
+var store = new Store('blogdata', {cwd: 'sitedata'});
 
 var app = express();
+app.use(bodyParser.json());
 app.use('/bower_components',  express.static(__dirname + '/bower_components'));
 app.use('/public',  express.static(__dirname + '/public'));
 
 app.locals.blogData = {
-  posts: {},
-  after_post: null,
-  before_post:null,
-  after_comments:null,
-  before_comments:null,
+  posts: [],
 }
+
+app.locals.loggedin = false;
 
 
 app.get("/json",function(req,res){
@@ -31,36 +31,96 @@ app.get("/json",function(req,res){
   //   returnRole(posts.data.children);
   //   res.send(blogData);
   // });
+    res.send(store.get('test'));
+});
+
+
+app.post('/checkuser', function (req, res) {
+  checkuser(req.body.data,function(redditclient){
+    if(!redditclient){
+      res.status(400).json({ error: 'Not Valid Login' })
+    }
+
+    else {
+      console.log('good');
+      app.locals.redditClient = redditclient;
+      app.locals.loggedin = true;
+      res.json({status:"ok"});
+    }
+  });  
+});
+
+
+app.get("/account",function(req,res){
+  if(app.locals.loggedin) {
+    res.sendFile(__dirname + "/account.html");
+  }
+  else {
+    res.redirect('/signin');
+  }
 
 });
 
 app.get("/signin",function(req,res){
-
-
-  reddit({ username: 'qizzer', password: 'inside'}, function(err, authorized) {
-      if(err) console.log(err);
-      authorized.get('/user/qizzer/submitted.json', function(err, response) {
-        if(err) console.log(err);
-        app.locals.blogData.after_posts = response.data.after;
-        app.locals.blogData.before_posts = response.data.before;
-        returnRole(response.data.children);
-        res.send(app.locals.blogData);
-      });
-  });
-
-
+  res.sendFile(__dirname + "/signin.html");
 });
 
 
 app.get("/",function(req,res){
+  store.set('test','test string');
   res.sendFile(__dirname + "/index.html");
 });
 
 
+var checkuser = function(userdata,callback){
+    reddit({ username: userdata.name, password: userdata.pass}, function(err, authorized) {
+      if(err) {
+        console.log(err);
+        callback(false);
+      }
+
+      else {
+        callback(authorized);
+      }       
+    });
+}
+
+var getCollection = function(options,callback){
+  if(!options.after){
+    url = '/user/qizzer/submitted.json?limit=100';
+  }
+
+  else {
+    url = '/user/qizzer/submitted.json?limit=100&after='+options.after;
+  }
+
+  options.callobj.get(url, function(err, response) {
+    if(err) console.log(err);
+    options.after = response.data.after;
+    console.log(options.after+": "+response.data.children.length);
+    app.locals.blogData.posts.push(returnRole(response.data.children));
+    if(options.after){
+      getCollection(options,callback);
+    }
+
+    else {
+      app.locals.blogData.posts = _.flatten(app.locals.blogData.posts);
+      callback(app.locals.blogData.posts);
+    }
+  });
+}
+
 
 var returnRole = function(posts,comments){
-  var cleaned = _.map(posts, function(post){
+
+  var cleaned = []
+
+  _.each(posts, function(post){
     post = post.data;
+
+    if(post.post_hint !== "image"){
+      return
+    }
 
     if(post.preview){
       var imgurl = post.preview.images[0].source.url;
@@ -80,13 +140,13 @@ var returnRole = function(posts,comments){
     }
 
 
-    return blogObj;
+    cleaned.push(blogObj);
   });
 
 
  
-  var downed = downloadImgs(cleaned);
-  app.locals.blogData.posts = downed;
+  downloadImgs(cleaned);
+  return cleaned;
 
 }
 
@@ -104,7 +164,6 @@ var downloadImgs = function(posts){
           if (err){
             console.log("download")
             console.log(err);
-            post.localimgurl = post.url;
             return;
           } 
     
@@ -125,6 +184,8 @@ var downloadImgs = function(posts){
                     console.log(err);
                     return;
                   } 
+
+                  post.localimgurl = url;
                 });
               });
             }
@@ -134,12 +195,12 @@ var downloadImgs = function(posts){
 
       else{
         imgsizer.open(__dirname + url, function(err, image){
-          console.log(image.width());
+          post.localimgurl = url;
         });
       }
     });
 
-    post.localimgurl = url;
+    
   });
 
 

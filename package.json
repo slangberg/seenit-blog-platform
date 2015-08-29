@@ -4,10 +4,13 @@
   "description": "reddit to blog framework",
   "main": "server.js",
   "dependencies": {
+    "body-parser": "^1.13.3",
     "bower": "^1.4.1",
+    "data-store": "^0.8.2",
+    "ejs": "^2.3.3",
     "express": "^4.13.3",
-    "request": "^2.61.0",
     "lwip": "^0.0.7",
+    "request": "^2.61.0",
     "simpledownload": "^1.0.3",
     "underscore": "^1.8.3"
   },
