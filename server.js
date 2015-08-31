@@ -10,30 +10,59 @@ var bodyParser = require('body-parser')
 var Store = require('data-store');
 var store = new Store('blogdata', {cwd: 'sitedata'});
 
+
+
+var mongoose = require('mongoose');
+mongoose.connect('mongodb://localhost/test');
+
+
+var db = mongoose.connection;
+db.on('error', console.error.bind(console, 'connection error:'));
+db.once('open', function (callback) {
+  var blogSchema = mongoose.Schema({
+    title:  String,
+    tagline: String,
+    url:   String,
+    redditdata:  {
+      username:String,
+      id:String,
+    },
+    lastupdate: { type: Date, default: Date.now },
+    posts:Array
+  });
+
+  blogSchema.methods.testMeth = function () {
+    console.log(this.title);
+  }
+
+  var Blog = mongoose.model('Blog', blogSchema);
+  app.locals.blogObj = Blog;
+});
+
+
 var app = express();
 app.use(bodyParser.json());
 app.use('/bower_components',  express.static(__dirname + '/bower_components'));
 app.use('/public',  express.static(__dirname + '/public'));
-
-app.locals.blogData = {
-  posts: [],
-}
+app.set('view engine', 'jade');
+app.listen(8080);
 
 app.locals.loggedin = false;
+app.locals.tempposts = [];
 
 
 app.get("/json",function(req,res){
-  //var submittedURL = url.format(submitted);
-  // request(submittedURL, function(error, response, body) {
-  //   var posts = JSON.parse(body);
-  //   blogData.after_posts = posts.data.after;
-  //   blogData.before_posts = posts.data.before;
-  //   returnRole(posts.data.children);
-  //   res.send(blogData);
-  // });
-    res.send(store.get('test'));
+
 });
 
+
+app.get("/clear",function(req,res){
+  app.locals.blogObj.find().remove().exec();
+  app.locals.blogObj.find(function (err, blogs) {
+    if (err) return console.error(err);
+    console.log(blogs);
+  });
+});
 
 app.post('/checkuser', function (req, res) {
   checkuser(req.body.data,function(redditclient){
@@ -50,10 +79,43 @@ app.post('/checkuser', function (req, res) {
   });  
 });
 
+app.post('/setupuser', function (req, res) {
+  if(app.locals.loggedin) {
+    blogdata = req.body.blogdata
+    app.locals.currblog = new app.locals.blogObj({
+      title:  blogdata.name,
+      tagline: blogdata.tagline,
+      url:   String,
+      redditdata:  {
+        username:app.locals.userdata.name,
+        id:app.locals.userdata.id,
+      },
+    });
+
+    getCollection({callobj:app.locals.redditClient},function(data){
+      app.locals.currblog.posts = data;
+      saveRecord(app.locals.currblog);
+      res.json({data:findRecord(app.locals.userdata.name)});
+    });
+  }
+  else {
+    res.status(400).json({ error: 'Not Logged In' })
+  }
+});
 
 app.get("/account",function(req,res){
+
   if(app.locals.loggedin) {
-    res.sendFile(__dirname + "/account.html");
+    if(!findRecord(app.locals.userdata.name)){
+      res.render('setupaccount', { 
+        title: "Setup Account For "+app.locals.userdata.name, 
+        username: app.locals.userdata.name, 
+      })
+    }
+
+    else {
+      userdata = findRecord(app.locals.userdata.name);
+    }
   }
   else {
     res.redirect('/signin');
@@ -62,13 +124,12 @@ app.get("/account",function(req,res){
 });
 
 app.get("/signin",function(req,res){
-  res.sendFile(__dirname + "/signin.html");
+  res.render('signin', { title: "Sign In"})
 });
 
 
 app.get("/",function(req,res){
-  store.set('test','test string');
-  res.sendFile(__dirname + "/index.html");
+  res.render('index', { title: "Blog"})
 });
 
 
@@ -80,32 +141,39 @@ var checkuser = function(userdata,callback){
       }
 
       else {
-        callback(authorized);
+        authorized.get('/api/me.json', function(err, response) {
+          app.locals.userdata = {
+            name: response.data.name,
+            id: response.data.id
+          }
+          callback(authorized);
+        });
       }       
     });
 }
 
 var getCollection = function(options,callback){
   if(!options.after){
-    url = '/user/qizzer/submitted.json?limit=100';
+    url = '/user/'+app.locals.userdata.name+'/submitted.json?limit=100';
   }
 
   else {
-    url = '/user/qizzer/submitted.json?limit=100&after='+options.after;
+    url = '/user/'+app.locals.userdata.name+'/submitted.json?limit=100&after='+options.after;
   }
 
   options.callobj.get(url, function(err, response) {
     if(err) console.log(err);
     options.after = response.data.after;
     console.log(options.after+": "+response.data.children.length);
-    app.locals.blogData.posts.push(returnRole(response.data.children));
+    app.locals.tempposts.push(returnRole(response.data.children));
     if(options.after){
       getCollection(options,callback);
     }
 
     else {
-      app.locals.blogData.posts = _.flatten(app.locals.blogData.posts);
-      callback(app.locals.blogData.posts);
+      app.locals.tempposts = _.flatten(app.locals.tempposts);
+      callback(app.locals.tempposts);
+      app.locals.tempposts = [];
     }
   });
 }
@@ -207,7 +275,27 @@ var downloadImgs = function(posts){
   return posts;
 }
 
+var findRecord = function (username){
+  app.locals.blogObj.findOne({ 'redditdata.username': username }).exec(function (err, blog) {
+    if (err) return handleError(err);
+    if(!blog){
+      return false;
+    }
 
-app.listen(8080);
+    else {
+      return blog;
+    }
+  })
+}
+
+var saveRecord = function(blogObj){
+  blogObj.save(function (err, blog) {
+    if (err) return console.error(err);
+    console.log("blog saved");
+    console.log(blog);
+  });
+}
+
+
 
 

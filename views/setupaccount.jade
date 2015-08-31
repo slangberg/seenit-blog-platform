@@ -1,0 +1,15 @@
+include header.jade
+  body
+    h1 Account
+    setup
+      form
+        div {{errormsg}}
+        div
+          input(type='text', ng-model='blog.name', placeholder='Blog Name')
+        div
+          input(type='text', ng-model='blog.tagline', placeholder='Blog Tagline')
+        div
+          input(type='text', ng-model='blog.url', placeholder='Blog URl')
+
+        script(type='text/javascript')
+        input(type='submit', ng-click='setupUser(blog)', value='Setup Blog')

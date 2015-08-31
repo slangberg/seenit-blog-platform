@@ -1,0 +1,12 @@
+<% include header %>
+<body>
+	<h1>Blog Details For <%= username %></h1>
+	<setup>
+		<form>
+			<div><input type="text" ng-model="blog.name"  placeholder="Blog Name" /></div>
+			<div><input type="text" ng-model="blog.tagline"  placeholder="Blog Tagline" /></div>
+			<input type="submit" ng-click="setupUser()" value="Save Blogdata" />
+		</form>
+	</setup>
+</body>
+</html>

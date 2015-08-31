@@ -1,3 +1,8 @@
 {
-  "test": "test string"
+  "test": "test string",
+  "qizzer": {
+    "name": "test name",
+    "tagline": "test tag",
+    "url": "test-url"
+  }
 }
