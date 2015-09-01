@@ -56,11 +56,18 @@ app.get("/json",function(req,res){
 });
 
 
+app.get("/show",function(req,res){
+  app.locals.blogObj.find(function (err, blogs) {
+    if (err) return console.error(err);
+    res.json(blogs);
+  });
+});
+
 app.get("/clear",function(req,res){
   app.locals.blogObj.find().remove().exec();
   app.locals.blogObj.find(function (err, blogs) {
     if (err) return console.error(err);
-    console.log(blogs);
+    res.json(blogs);
   });
 });
 
@@ -95,7 +102,7 @@ app.post('/setupuser', function (req, res) {
     getCollection({callobj:app.locals.redditClient},function(data){
       app.locals.currblog.posts = data;
       saveRecord(app.locals.currblog);
-      res.json({data:findRecord(app.locals.userdata.name)});
+      res.json({data:app.locals.currblog});
     });
   }
   else {
@@ -106,22 +113,47 @@ app.post('/setupuser', function (req, res) {
 app.get("/account",function(req,res){
 
   if(app.locals.loggedin) {
-    if(!findRecord(app.locals.userdata.name)){
-      res.render('setupaccount', { 
-        title: "Setup Account For "+app.locals.userdata.name, 
-        username: app.locals.userdata.name, 
-      })
-    }
+    findRecord(app.locals.userdata.name,function(blog){
+      if(!blog){
+        res.render('setupaccount', { 
+          title: "Setup Account For "+app.locals.userdata.name, 
+          username: app.locals.userdata.name, 
+        })
+      }
 
-    else {
-      userdata = findRecord(app.locals.userdata.name);
-    }
+      else {
+        res.render('account', { 
+          title: "Account For "+app.locals.userdata.name, 
+          username: app.locals.userdata.name, 
+        })
+      }
+    });
   }
   else {
     res.redirect('/signin');
   }
 
 });
+
+app.get("/currentuser",function(req,res){
+  if(app.locals.loggedin) {
+    findRecord(app.locals.userdata.name,function(blog){
+      
+      if(blog){
+       res.json(blog);
+      }
+
+      else{
+        res.status(400).json({ error: 'Database Error' });
+      }
+
+    });
+  }
+  else {
+    res.status(400).json({ error: 'Not Logged In' })
+  }
+});
+
 
 app.get("/signin",function(req,res){
   res.render('signin', { title: "Sign In"})
@@ -275,15 +307,16 @@ var downloadImgs = function(posts){
   return posts;
 }
 
-var findRecord = function (username){
+var findRecord = function (username,callback){
+  console.log('find for username: '+username);
   app.locals.blogObj.findOne({ 'redditdata.username': username }).exec(function (err, blog) {
     if (err) return handleError(err);
     if(!blog){
-      return false;
+      callback(false);
     }
 
     else {
-      return blog;
+      callback(blog);
     }
   })
 }

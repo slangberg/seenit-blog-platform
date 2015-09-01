@@ -17,6 +17,7 @@
   ],
   "dependencies": {
     "angular": "~1.4.4",
-    "ngInfiniteScroll": "1.0.0"
+    "ngInfiniteScroll": "1.0.0",
+    "bootstrap": "~3.3.5"
   }
 }

@@ -27,6 +27,15 @@ app.directive('setup', function() {
 });
 
 
+app.directive('account', function() {
+  return {
+    restrict: 'AE',
+    controller:'accountCtrl'
+  };//end return
+});
+
+
+
 
 app.controller('blogRollCtrl',['$scope','$element','$http', function($scope,$element,$http) {
   $http.get(window.location.href+'json').success(function(data) {
@@ -69,6 +78,17 @@ app.controller('setupCtrl',['$scope','$element','$http',function($scope,$element
   
   }
 }]);
+
+app.controller('accountCtrl',['$scope','$element','$http',function($scope,$element,$http) {
+    $http.get('/currentuser').success(function(data) {
+      $scope.userdata = data;
+      console.log($scope.userdata);
+    })
+    .error(function(data, status) {
+      console.error('userdata fail');
+    })
+}]);
+
 
 
 app.filter('sanitizeUrl', function () {
