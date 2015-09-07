@@ -1,16 +1,37 @@
 include header.jade
 body
-  h1  Account For #{username}
-  account
-    form
-      div {{errormsg}}
-      div
-        input(type='text', ng-model='userdata.title', placeholder='Blog Name')
-      div
-        input(type='text', ng-model='userdata.tagline', placeholder='Blog Tagline')
-      div
-        input(type='text', ng-model='userdata.url', placeholder='Blog URl')
-      table
-        tbody
-          tr.blog-item(ng-repeat='post in userdata.posts')
-            td {{post.title}}
+  .page.container
+    h1  Account For #{username}
+    .blog-role-container
+      account
+        .account-controls
+          button.btn.btn-danger(ng-click="removeAccount()") Delete Account
+        form
+          div {{errormsg}}
+          .form-group
+            label(for="blogname") Email address
+            input#blogname.form-control(type='text', ng-model='userdata.title', placeholder='Blog Name')
+          .form-group
+            label(for="blogtagline") Blog Tagline
+            input#blogtagline.form-control(type='text', ng-model='userdata.tagline', placeholder='Blog Tagline')
+          .form-group
+            label(for="blogurl") Blog URL
+            input#blogurl.form-control(type='text', ng-model='userdata.url', placeholder='Blog URl')
+            p.help-block No Spaces or special charcters
+          table.submmited-table.table 
+            thead
+              th Thumb
+              th Post Details
+            tbody
+              tr.submmited-item(ng-repeat='post in userdata.posts')
+                td
+                  img.submmited-thumb(ng-src="{{post.thumbnail}}")
+                td.submmited-details   
+                  ul.submmited-details-list   
+                    li.submmited-title {{post.title}}
+                    li 
+                      a(ng-href='{{post.sourceurl}}') Source Link
+                    li 
+                      a(ng-href='{{post.permalink}}') Reddit Link
+                    li Source Subreddit: {{post.cat}}
+

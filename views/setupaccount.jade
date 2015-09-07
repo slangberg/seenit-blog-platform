@@ -1,15 +1,19 @@
 include header.jade
   body
-    h1 Setup Account For #{username}
-    setup
-      form
-        div {{errormsg}}
-        div
-          input(type='text', ng-model='blog.name', placeholder='Blog Name')
-        div
-          input(type='text', ng-model='blog.tagline', placeholder='Blog Tagline')
-        div
-          input(type='text', ng-model='blog.url', placeholder='Blog URl')
-
-        script(type='text/javascript')
-        input(type='submit', ng-click='setupUser(blog)', value='Setup Blog')
+    .page.container
+      h1 Setup Account For #{username}
+      setup
+        form
+          div.form-error.bg-danger(ng-if="errormsg") {{errormsg}}
+          .form-group(ng-class="isBlank(blog.title)")
+            label(for="blogname") Email address
+            input#blogname.form-control(type='text', ng-model='blog.title', placeholder='Blog Name',required)
+          .form-group
+            label(for="blogtagline") Blog Tagline
+            input#blogtagline.form-control(type='text', ng-model='blog.tagline', placeholder='Blog Tagline',)
+          .form-group.has-feedback(ng-class="[isBlank(blog.url), {'has-error': notavailble}]")
+            label(for="blogurl") Blog URL
+            input#blogurl.form-control(type='text', ng-model='blog.url', placeholder='Blog URl', ng-change="checkUrl(blog.url)", required)
+            span.glyphicon.glyphicon-remove.form-control-feedback(aria-hidden="true")
+            p.help-block No Spaces or Special Characters
+          input.btn.btn-primary(type='submit', ng-click='setupUser(blog)', value='Setup Blog')

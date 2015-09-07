@@ -1,12 +1,6 @@
 include header.jade
   body
-    h1 Sign In
-    signin
-      form
-        div {{errormsg}}
-        div
-          input(type='text', ng-model='user.name', placeholder='Reddit Username')
-        div
-          input(type='password', ng-model='user.pass', placeholder='Reddit Password')
-            
-        input(type='submit', ng-click='submitUserName(user)', value='Login')
+    .centerform
+      h1 Sign In
+      p To prove the account you wish to blogify is your own please sign in with your reddit account, this app will only confirm your username, it does not have persmassion to make any modications
+      a.btn-lg.btn.btn-primary(href="/auth/reddit") Login with Your Reddit

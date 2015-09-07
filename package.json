@@ -6,13 +6,13 @@
   "dependencies": {
     "body-parser": "^1.13.3",
     "bower": "^1.4.1",
-    "data-store": "^0.8.2",
-    "ejs": "^2.3.3",
     "express": "^4.13.3",
+    "express-session": "^1.11.3",
     "jade": "^1.11.0",
     "lwip": "^0.0.7",
     "mongoose": "^4.1.3",
-    "request": "^2.61.0",
+    "passport": "^0.3.0",
+    "passport-reddit": "^0.2.4",
     "simpledownload": "^1.0.3",
     "underscore": "^1.8.3"
   },

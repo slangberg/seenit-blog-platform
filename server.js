@@ -1,5 +1,4 @@
 var url = require('url');
-var request = require('request');
 var express = require('express');
 var download = require('simpledownload');
 var fs = require("fs");
@@ -7,11 +6,13 @@ var imgsizer = require('lwip')
 var reddit = require('redditor');
 var _ = require('underscore');
 var bodyParser = require('body-parser')
-var Store = require('data-store');
-var store = new Store('blogdata', {cwd: 'sitedata'});
+var passport = require('passport')
+var RedditStrategy = require('passport-reddit').Strategy;
+var session = require('express-session')
+var keys = require('./redditkeys.js')
 
 
-
+// database ==================================
 var mongoose = require('mongoose');
 mongoose.connect('mongodb://localhost/test');
 
@@ -40,19 +41,72 @@ db.once('open', function (callback) {
 });
 
 
+var findRecord = function (username,callback){
+  console.log('find for username: '+username);
+  app.locals.blogObj.findOne({ 'redditdata.username': username }).exec(function (err, blog) {
+    if (err) return handleError(err);
+    if(!blog){
+      callback(false);
+    }
+
+    else {
+      callback(blog);
+    }
+  })
+}
+
+var saveRecord = function(blogObj){
+  blogObj.save(function (err, blog) {
+    if (err) return console.error(err);
+    console.log("blog saved");
+    console.log(blog);
+  });
+}
+
+var removeRecord = function(username){
+ app.locals.blogObj.findOne({ 'redditdata.username': username }).remove().exec();
+}
+
+
+// express ==================================
 var app = express();
-app.use(bodyParser.json());
-app.use('/bower_components',  express.static(__dirname + '/bower_components'));
-app.use('/public',  express.static(__dirname + '/public'));
+
 app.set('view engine', 'jade');
+app.use('/bower_components',  express.static('bower_components'));
+app.use('/public',  express.static('public'));
+app.use(passport.initialize());
+app.use(passport.session());
+app.use(bodyParser.json());
+app.use(session({
+  resave: false,
+  saveUninitialized: false,
+  secret: 'keyboard cat'
+}));
+
+
 app.listen(8080);
 
 app.locals.loggedin = false;
 app.locals.tempposts = [];
-
+app.locals.user = {};
 
 app.get("/json",function(req,res){
 
+});
+
+
+app.get("/b/:url",function(req,res){
+  findBlog('url',req.params.url,function(blog){ 
+    if(blog){
+      res.json({posts:blog.posts})
+    }
+
+    else{
+      res.render('404', { 
+        url: req.get('host'), 
+      })
+    }
+  });
 });
 
 
@@ -71,31 +125,47 @@ app.get("/clear",function(req,res){
   });
 });
 
-app.post('/checkuser', function (req, res) {
-  checkuser(req.body.data,function(redditclient){
-    if(!redditclient){
-      res.status(400).json({ error: 'Not Valid Login' })
-    }
+app.post('/checkurl', function (req, res) {
+  if(app.locals.loggedin) {
+    var url = req.body.url
+    findBlog('url',url,function(status){ 
+      if(status){
+        res.json({notavailble:true})
+      }
 
-    else {
-      console.log('good');
-      app.locals.redditClient = redditclient;
-      app.locals.loggedin = true;
-      res.json({status:"ok"});
-    }
-  });  
+      else{
+        res.json({notavailble:false})
+      }
+    });
+  }
+  else {
+    res.status(400).json({ error: 'Not Logged In' })
+  }
 });
+
+
+
+app.post('/removeuser', function (req, res) {
+  if(app.locals.loggedin) {
+    removeRecord(app.locals.user.name);
+    res.json({removed:true})
+  }
+  else {
+    res.status(400).json({ error: 'Not Logged In' })
+  }
+});
+
 
 app.post('/setupuser', function (req, res) {
   if(app.locals.loggedin) {
     blogdata = req.body.blogdata
     app.locals.currblog = new app.locals.blogObj({
-      title:  blogdata.name,
+      title:  blogdata.title,
       tagline: blogdata.tagline,
-      url:   String,
+      url: blogdata.url,
       redditdata:  {
-        username:app.locals.userdata.name,
-        id:app.locals.userdata.id,
+        username:app.locals.user.name,
+        id:app.locals.user.id,
       },
     });
 
@@ -110,35 +180,31 @@ app.post('/setupuser', function (req, res) {
   }
 });
 
-app.get("/account",function(req,res){
+app.get("/account",ensureAuthenticated, function(req,res){
+  findRecord(app.locals.user.name,function(blog){
+    if(!blog){
+      res.render('setupaccount', { 
+        title: "Setup Account For "+app.locals.user.name, 
+        username: app.locals.user.name,
+        url: req.get('host'),
+      })
+    }
 
-  if(app.locals.loggedin) {
-    findRecord(app.locals.userdata.name,function(blog){
-      if(!blog){
-        res.render('setupaccount', { 
-          title: "Setup Account For "+app.locals.userdata.name, 
-          username: app.locals.userdata.name, 
-        })
-      }
-
-      else {
-        res.render('account', { 
-          title: "Account For "+app.locals.userdata.name, 
-          username: app.locals.userdata.name, 
-        })
-      }
-    });
-  }
-  else {
-    res.redirect('/signin');
-  }
-
+    else {
+      res.render('account', { 
+        title: "Account For "+app.locals.user.name, 
+        username: app.locals.user.name,
+        url: req.get('host'), 
+      })
+    }
+  });
 });
 
 app.get("/currentuser",function(req,res){
   if(app.locals.loggedin) {
-    findRecord(app.locals.userdata.name,function(blog){
-      
+
+    findRecord(app.locals.user.name,function(blog){
+
       if(blog){
        res.json(blog);
       }
@@ -155,7 +221,7 @@ app.get("/currentuser",function(req,res){
 });
 
 
-app.get("/signin",function(req,res){
+app.get("/login",function(req,res){
   res.render('signin', { title: "Sign In"})
 });
 
@@ -164,36 +230,91 @@ app.get("/",function(req,res){
   res.render('index', { title: "Blog"})
 });
 
+app.get('/auth/reddit', passport.authenticate('reddit'));
 
-var checkuser = function(userdata,callback){
-    reddit({ username: userdata.name, password: userdata.pass}, function(err, authorized) {
-      if(err) {
-        console.log(err);
-        callback(false);
+app.get('/auth/reddit/callback', passport.authenticate('reddit', {
+  successRedirect: '/account',
+  failureRedirect: '/login'
+}));
+
+app.get('/logout', function(req, res){
+  req.logout();
+  res.redirect('/');
+});
+
+
+// passport ==================================
+
+passport.serializeUser(function(user, done) {
+  var userdata = {
+    id: user.id,
+    name: user.name
+  }
+  done(null, userdata);
+});
+
+passport.deserializeUser(function(obj, done) {
+  app.locals.loggedin = false;
+  app.locals.user = {}
+  done(null, obj);
+});
+
+passport.use(new RedditStrategy({
+    clientID: keys.id,
+    clientSecret: keys.secret,
+    callbackURL: "http://127.0.0.1:8080/auth/reddit/callback",
+    state: true
+  },
+  function(accessToken, refreshToken, profile, done) {
+    process.nextTick(function () {
+      console.log("passport function process")
+      app.locals.loggedin = true;
+      app.locals.user.name = profile.name;
+      app.locals.user.id = profile.id;
+
+      return done(null, profile);
+    });
+  }
+));
+
+function ensureAuthenticated(req, res, next) {
+  if(typeof req.session.passport == 'undefined'){
+    res.redirect('/login');
+  }
+  else{ return next(); }
+}
+
+// functions ==================================
+
+
+
+var findBlog = function(prop,data,callback){
+  var searchkey = {
+    username: { 'redditdata.username': data },
+    url: { 'url': data }
+  }
+    app.locals.blogObj.findOne(searchkey[prop]).exec(function (err, blogdata) {
+      if (err) return handleError(err);
+      if(blogdata){
+        callback(blogdata);
       }
 
       else {
-        authorized.get('/api/me.json', function(err, response) {
-          app.locals.userdata = {
-            name: response.data.name,
-            id: response.data.id
-          }
-          callback(authorized);
-        });
-      }       
-    });
+        callback(false);
+      }
+    })
 }
 
 var getCollection = function(options,callback){
   if(!options.after){
-    url = '/user/'+app.locals.userdata.name+'/submitted.json?limit=100';
+    url = '/user/'+app.locals.user.name+'/submitted.json?limit=100';
   }
 
   else {
-    url = '/user/'+app.locals.userdata.name+'/submitted.json?limit=100&after='+options.after;
+    url = '/user/'+app.locals.user.name+'/submitted.json?limit=100&after='+options.after;
   }
 
-  options.callobj.get(url, function(err, response) {
+  reddit.get(url, function(err, response) {
     if(err) console.log(err);
     options.after = response.data.after;
     console.log(options.after+": "+response.data.children.length);
@@ -218,34 +339,31 @@ var returnRole = function(posts,comments){
   _.each(posts, function(post){
     post = post.data;
 
-    if(post.post_hint !== "image"){
-      return
-    }
-
-    if(post.preview){
+    if(!_.isUndefined(post.preview) && !_.isUndefined(post.preview.images[0])){
       var imgurl = post.preview.images[0].source.url;
+
+      var blogObj = {
+        id: post.id,
+        sourceurl: post.url,
+        imgurl: imgurl,
+        permalink: "http://reddit.com"+post.permalink,
+        title: post.title,
+        thumbnail: post.thumbnail,
+        cat: post.subreddit
+      }
+
+
+      cleaned.push(blogObj);
     }
 
     else {
-      var imgurl = post.url;
+      return false;
     }
 
-    var blogObj = {
-      id: post.id,
-      sourceurl: post.url,
-      imgurl: imgurl,
-      permalink: "http://reddit.com"+post.permalink,
-      title: post.title,
-      cat: post.subreddit
-    }
-
-
-    cleaned.push(blogObj);
+    
   });
 
-
- 
-  downloadImgs(cleaned);
+  //downloadImgs(cleaned);
   return cleaned;
 
 }
@@ -306,29 +424,6 @@ var downloadImgs = function(posts){
 
   return posts;
 }
-
-var findRecord = function (username,callback){
-  console.log('find for username: '+username);
-  app.locals.blogObj.findOne({ 'redditdata.username': username }).exec(function (err, blog) {
-    if (err) return handleError(err);
-    if(!blog){
-      callback(false);
-    }
-
-    else {
-      callback(blog);
-    }
-  })
-}
-
-var saveRecord = function(blogObj){
-  blogObj.save(function (err, blog) {
-    if (err) return console.error(err);
-    console.log("blog saved");
-    console.log(blog);
-  });
-}
-
 
 
 
