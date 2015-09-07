@@ -3,8 +3,10 @@ html(ng-app='reddi-app')
   head
     meta(name="viewport", content="width=device-width, initial-scale=1")
     title!= title
+    script(src='http://#{url}/bower_components/jquery/dist/jquery.min.js')
     script(src='http://#{url}/bower_components/angular/angular.min.js')
     script(src='http://#{url}/bower_components/ngInfiniteScroll/build/ng-infinite-scroll.min.js')
+    script(src='http://#{url}/bower_components/underscore/underscore-min.js')
     script(src='http://#{url}/public/app.js')
     link(rel='stylesheet', href='http://#{url}/public/css/style.css')
     link(rel='stylesheet', href='http://#{url}/bower_components/bootstrap/dist/css/bootstrap.css')

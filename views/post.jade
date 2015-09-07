@@ -1,0 +1,13 @@
+include header.jade
+  body
+    .page.container
+      header
+        h1!= title
+        ul.blog-role
+          li.blog-item
+            .blog-img-holder
+              a.blog-img-link
+                img.blog-img(src="#{data.imgurl}")
+            .blog-info-holder
+              a.post-tile(href='#{data.permalink}')
+                h2!=data.title

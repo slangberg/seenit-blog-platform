@@ -1,4 +1,4 @@
-var app = angular.module('reddi-app', []);
+var app = angular.module('reddi-app', ['infinite-scroll']);
 
 app.controller('MainCtrl', ['$scope','$rootScope', function($scope,$rootScope) {
  
@@ -30,9 +30,19 @@ app.directive('account', function() {
 
 
 app.controller('blogRollCtrl',['$scope','$element','$http', function($scope,$element,$http) {
-  $http.get(window.location.href+'json').success(function(data) {
-      $scope.postsData = data.posts;
-    })
+  
+  $http.get('/json').success(function(data) {
+    $scope.allposts = data;
+    $scope.postsData = $scope.allposts.slice(0, 10);
+  })
+
+  var cutindex = 10;
+
+  $scope.getNextSet = function(){
+    var nextset = $scope.allposts.slice(cutindex, cutindex+11);
+    $scope.postsData = _.union( $scope.postsData,nextset);
+    cutindex=cutindex+10;
+  }
 }]);
 
 

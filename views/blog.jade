@@ -1,0 +1,17 @@
+include header.jade
+  body
+    .page.container
+      header
+        h1!= title
+        h2.tagline!= data.tagline 
+      blogroll
+        .blog-scroll-box(infinite-scroll="getNextSet()", infinite-scroll-distance="3") 
+        ul.blog-role
+          li.blog-item(ng-animate="'animate'", ng-repeat="post in postsData")
+            .blog-img-holder
+              a.blog-img-link
+                img.blog-img(ng-src='{{post.imgurl}}')
+            .blog-info-holder
+              a.post-tile(ng-href='{{post.permalink}}')
+                h2 {{post.title}}
+        button(ng-click="getNextSet()")

@@ -91,14 +91,26 @@ app.locals.tempposts = [];
 app.locals.user = {};
 
 app.get("/json",function(req,res){
-
+  if(req.session.posts){
+    res.json(req.session.posts);
+  }
+  
+  else {
+    res.status(400).json({ error: 'no posts' })
+  }
 });
 
 
-app.get("/b/:url",function(req,res){
+app.get("/b/:url/",function(req,res){
   findBlog('url',req.params.url,function(blog){ 
     if(blog){
-      res.json({posts:blog.posts})
+      req.session.username = blog.redditdata.username;
+      req.session.posts = blog.posts
+      res.render('blog', {
+        title: blog.title,
+        data: blog,
+        url: req.get('host'),
+      })
     }
 
     else{
@@ -109,6 +121,29 @@ app.get("/b/:url",function(req,res){
   });
 });
 
+
+app.get("/b/:url/:posturl",function(req,res){
+  findBlog('url',req.params.url,function(blog){ 
+    if(blog){
+      req.session.username = blog.redditdata.username;
+      req.session.posts = blog.posts
+
+      var post = _.find(req.session.posts, function(post){ return post.url == req.params.posturl});
+
+      res.render('post', {
+        title: post.title,
+        data: post,
+        url: req.get('host'),
+      })
+    }
+
+    else{
+      res.render('404', { 
+        url: req.get('host'), 
+      })
+    }
+  });
+});
 
 app.get("/show",function(req,res){
   app.locals.blogObj.find(function (err, blogs) {
@@ -222,12 +257,18 @@ app.get("/currentuser",function(req,res){
 
 
 app.get("/login",function(req,res){
-  res.render('signin', { title: "Sign In"})
+  res.render('signin', { 
+    title: "Sign In",
+    url: req.get('host')
+  })
 });
 
 
 app.get("/",function(req,res){
-  res.render('index', { title: "Blog"})
+  res.render('index', { 
+    title: "Blog",
+    url: req.get('host')}
+  );
 });
 
 app.get('/auth/reddit', passport.authenticate('reddit'));
@@ -342,6 +383,9 @@ var returnRole = function(posts,comments){
     if(!_.isUndefined(post.preview) && !_.isUndefined(post.preview.images[0])){
       var imgurl = post.preview.images[0].source.url;
 
+      var str = post.title.toLowerCase().replace(/\s+/g,'-');
+      var url = str.replace(/[^\w\s\-]/gi, '');
+
       var blogObj = {
         id: post.id,
         sourceurl: post.url,
@@ -349,6 +393,7 @@ var returnRole = function(posts,comments){
         permalink: "http://reddit.com"+post.permalink,
         title: post.title,
         thumbnail: post.thumbnail,
+        url: url,
         cat: post.subreddit
       }
 
