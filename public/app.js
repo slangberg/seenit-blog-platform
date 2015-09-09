@@ -115,6 +115,16 @@ app.controller('accountCtrl',['$scope','$element','$http','$window',function($sc
         })
       }
     }
+
+    $scope.updatePosts = function(){
+        $http.post('/addposts', {}).success(function(data) {
+          console.log("in");
+          console.log(data)
+          $scope.userdata.posts = data.posts;
+        }).error(function(data, status) {
+          $scope.errormsg = "Something Went Wrong"
+        })
+    }
 }]);
 
 

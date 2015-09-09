@@ -82,13 +82,10 @@ app.use(session({
   saveUninitialized: false,
   secret: 'keyboard cat'
 }));
-
-
 app.listen(8080);
-
-app.locals.loggedin = false;
 app.locals.tempposts = [];
-app.locals.user = {};
+
+
 
 app.get("/json",function(req,res){
   if(req.session.posts){
@@ -121,7 +118,6 @@ app.get("/b/:url/",function(req,res){
   });
 });
 
-
 app.get("/b/:url/:posturl",function(req,res){
   findBlog('url',req.params.url,function(blog){ 
     if(blog){
@@ -145,116 +141,94 @@ app.get("/b/:url/:posturl",function(req,res){
   });
 });
 
-app.get("/show",function(req,res){
-  app.locals.blogObj.find(function (err, blogs) {
-    if (err) return console.error(err);
-    res.json(blogs);
+app.post('/checkurl', isAuthJson, function (req, res) {
+  var url = req.body.url
+  findBlog('url',url,function(status){ 
+    if(status){
+      res.json({notavailble:true})
+    }
+
+    else{
+      res.json({notavailble:false})
+    }
   });
 });
 
-app.get("/clear",function(req,res){
-  app.locals.blogObj.find().remove().exec();
-  app.locals.blogObj.find(function (err, blogs) {
-    if (err) return console.error(err);
-    res.json(blogs);
+app.post('/removeuser', isAuthJson, function (req, res) {
+  removeRecord(req.session.passport.user.name);
+  res.json({removed:true})
+});
+
+app.post('/addposts', isAuthJson, function (req, res) {
+  findBlog('username',req.session.passport.user.name,function(blog){
+    getLatest(req.session.passport.user.name,function(data){
+      var newposts = returnRole(data.data.children);
+      var oldposts = blog.posts
+      _.each(newposts,  function(newpost) {
+       if(!_.find(oldposts, function(post){ return post.id == newpost.id })){
+          blog.posts.unshift(newpost)
+       }
+      });
+
+      blog.save(function (err, blog) {
+        if (err) return console.error(err);
+        console.log("saved");
+        res.json(blog)
+      });
+    });
   });
 });
 
-app.post('/checkurl', function (req, res) {
-  if(app.locals.loggedin) {
-    var url = req.body.url
-    findBlog('url',url,function(status){ 
-      if(status){
-        res.json({notavailble:true})
-      }
+app.post('/setupuser', isAuthJson, function (req, res) {
+  blogdata = req.body.blogdata
+  app.locals.currblog = new app.locals.blogObj({
+    title:  blogdata.title,
+    tagline: blogdata.tagline,
+    url: blogdata.url,
+    redditdata:  {
+      username:req.session.passport.user.name,
+      id:app.locals.user.id,
+    },
+  });
 
-      else{
-        res.json({notavailble:false})
-      }
-    });
-  }
-  else {
-    res.status(400).json({ error: 'Not Logged In' })
-  }
+  getCollection(req.session.passport.user.name,{},function(data){
+    app.locals.currblog.posts = data;
+    saveRecord(app.locals.currblog);
+    res.json({data:app.locals.currblog});
+  });
 });
 
-
-
-app.post('/removeuser', function (req, res) {
-  if(app.locals.loggedin) {
-    removeRecord(app.locals.user.name);
-    res.json({removed:true})
-  }
-  else {
-    res.status(400).json({ error: 'Not Logged In' })
-  }
-});
-
-
-app.post('/setupuser', function (req, res) {
-  if(app.locals.loggedin) {
-    blogdata = req.body.blogdata
-    app.locals.currblog = new app.locals.blogObj({
-      title:  blogdata.title,
-      tagline: blogdata.tagline,
-      url: blogdata.url,
-      redditdata:  {
-        username:app.locals.user.name,
-        id:app.locals.user.id,
-      },
-    });
-
-    getCollection({callobj:app.locals.redditClient},function(data){
-      app.locals.currblog.posts = data;
-      saveRecord(app.locals.currblog);
-      res.json({data:app.locals.currblog});
-    });
-  }
-  else {
-    res.status(400).json({ error: 'Not Logged In' })
-  }
-});
-
-app.get("/account",ensureAuthenticated, function(req,res){
-  findRecord(app.locals.user.name,function(blog){
+app.get("/account",isAuthHtml, function(req,res){
+  findBlog('username',req.session.passport.user.name,function(blog){
     if(!blog){
       res.render('setupaccount', { 
-        title: "Setup Account For "+app.locals.user.name, 
-        username: app.locals.user.name,
+        title: "Setup Account For "+req.session.passport.user.name, 
+        username: req.session.passport.user.name,
         url: req.get('host'),
       })
     }
 
     else {
       res.render('account', { 
-        title: "Account For "+app.locals.user.name, 
-        username: app.locals.user.name,
+        title: "Account For "+req.session.passport.user.name, 
+        username: req.session.passport.user.name,
         url: req.get('host'), 
       })
     }
   });
 });
 
-app.get("/currentuser",function(req,res){
-  if(app.locals.loggedin) {
+app.get("/currentuser",isAuthJson, function(req,res){
+  findBlog('username',req.session.passport.user.name,function(blog){
+    if(blog){
+     res.json(blog);
+    }
 
-    findRecord(app.locals.user.name,function(blog){
-
-      if(blog){
-       res.json(blog);
-      }
-
-      else{
-        res.status(400).json({ error: 'Database Error' });
-      }
-
-    });
-  }
-  else {
-    res.status(400).json({ error: 'Not Logged In' })
-  }
+    else{
+      res.status(400).json({ error: 'Database Error' });
+    }
+  });
 });
-
 
 app.get("/login",function(req,res){
   res.render('signin', { 
@@ -262,7 +236,6 @@ app.get("/login",function(req,res){
     url: req.get('host')
   })
 });
-
 
 app.get("/",function(req,res){
   res.render('index', { 
@@ -280,7 +253,8 @@ app.get('/auth/reddit/callback', passport.authenticate('reddit', {
 
 app.get('/logout', function(req, res){
   req.logout();
-  res.redirect('/');
+  delete req.session.passport; 
+  res.redirect('/login');
 });
 
 
@@ -308,19 +282,21 @@ passport.use(new RedditStrategy({
   },
   function(accessToken, refreshToken, profile, done) {
     process.nextTick(function () {
-      console.log("passport function process")
-      app.locals.loggedin = true;
-      app.locals.user.name = profile.name;
-      app.locals.user.id = profile.id;
-
       return done(null, profile);
     });
   }
 ));
 
-function ensureAuthenticated(req, res, next) {
-  if(typeof req.session.passport == 'undefined'){
+function isAuthHtml(req, res, next) {
+  if(_.isUndefined(req.session.passport)){
     res.redirect('/login');
+  }
+  else{ return next(); }
+}
+
+function isAuthJson(req, res, next) {
+  if(_.isUndefined(req.session.passport)){
+    res.status(400).json({ error: 'Not Logged In' })
   }
   else{ return next(); }
 }
@@ -346,13 +322,13 @@ var findBlog = function(prop,data,callback){
     })
 }
 
-var getCollection = function(options,callback){
+var getCollection = function(username,options,callback){
   if(!options.after){
-    url = '/user/'+app.locals.user.name+'/submitted.json?limit=100';
+    url = '/user/'+username+'/submitted.json?limit=100';
   }
 
   else {
-    url = '/user/'+app.locals.user.name+'/submitted.json?limit=100&after='+options.after;
+    url = '/user/'+username+'/submitted.json?limit=100&after='+options.after;
   }
 
   reddit.get(url, function(err, response) {
@@ -361,13 +337,22 @@ var getCollection = function(options,callback){
     console.log(options.after+": "+response.data.children.length);
     app.locals.tempposts.push(returnRole(response.data.children));
     if(options.after){
-      getCollection(options,callback);
+      getCollection(username,options,callback);
     }
 
     else {
       app.locals.tempposts = _.flatten(app.locals.tempposts);
       callback(app.locals.tempposts);
       app.locals.tempposts = [];
+    }
+  });
+}
+
+var getLatest = function(username,callback){
+  reddit.get('/user/'+username+'/submitted.json?limit=25', function(err, response) {
+    if(err) console.log(err);
+    else{
+      callback(response);
     }
   });
 }
@@ -412,7 +397,6 @@ var returnRole = function(posts,comments){
   return cleaned;
 
 }
-
 
 var downloadImgs = function(posts){
   _.each(posts, function(post){
