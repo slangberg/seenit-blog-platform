@@ -16,7 +16,10 @@
     "simpledownload": "^1.0.3",
     "underscore": "^1.8.3"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "node-sass": "^3.3.2",
+    "nodemon": "^1.4.1"
+  },
   "scripts": {
     "test": "run",
     "start": "node server.js"

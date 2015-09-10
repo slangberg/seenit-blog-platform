@@ -2,6 +2,10 @@
 body {
   background-image: url('../backgrounds/grey.png');
 }
+.clr {
+  display: block;
+  clear: both;
+}
 
 .page {
   max-width: 980px;
@@ -12,6 +16,7 @@ body {
 
 .page h1 {
   font-family: 'Rubik', sans-serif;
+  font-size: 1.7em;
 }
 
 .blog-role {
@@ -94,6 +99,30 @@ body {
   font-weight: bold;
 }
 
+.post-title {
+  font-size: 2em;
+  padding: 5px 5px 0px 5px;
+}
+
+.title-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.post-source-links {
+  list-style: none;
+  padding: 5px;
+  text-align: center;
+}
+
+.post-source-links li {
+  display: inline-block;
+}
+
+.post-source-link {
+  display: inline-block;
+  padding: 0px 5px;
+}
 
 .animate-enter, 
 .animate-leave

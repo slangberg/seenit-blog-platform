@@ -86,6 +86,11 @@ app.listen(8080);
 app.locals.tempposts = [];
 
 
+app.use(function (req, res, next) {
+  req.sourceurl = req.protocol + '://' + req.get('host');
+  next();
+});
+
 
 app.get("/json",function(req,res){
   if(req.session.posts){
@@ -98,24 +103,22 @@ app.get("/json",function(req,res){
 });
 
 
-app.get("/b/:url/",function(req,res){
-  findBlog('url',req.params.url,function(blog){ 
-    if(blog){
-      req.session.username = blog.redditdata.username;
-      req.session.posts = blog.posts
-      res.render('blog', {
-        title: blog.title,
-        data: blog,
-        url: req.get('host'),
-      })
-    }
+app.get("/b/:url/",findByUrl,function(req,res){
+  if(req.blog){
+    req.session.username = req.blog.redditdata.username;
+    req.session.posts = req.blog.posts
+    res.render('blog', {
+      title: req.blog.title,
+      data: req.blog,
+      url: req.sourceurl,
+    })
+  }
 
-    else{
-      res.render('404', { 
-        url: req.get('host'), 
-      })
-    }
-  });
+  else{
+    res.render('404', { 
+      url: req.sourceurl, 
+    })
+  }
 });
 
 app.get("/b/:url/:posturl",function(req,res){
@@ -123,19 +126,19 @@ app.get("/b/:url/:posturl",function(req,res){
     if(blog){
       req.session.username = blog.redditdata.username;
       req.session.posts = blog.posts
-
       var post = _.find(req.session.posts, function(post){ return post.url == req.params.posturl});
 
       res.render('post', {
-        title: post.title,
+        title: blog.title,
         data: post,
-        url: req.get('host'),
+        blogurl:req.sourceurl+"/b/"+blog.url,
+        url: req.sourceurl,
       })
     }
 
     else{
       res.render('404', { 
-        url: req.get('host'), 
+        url: req.sourceurl, 
       })
     }
   });
@@ -159,22 +162,20 @@ app.post('/removeuser', isAuthJson, function (req, res) {
   res.json({removed:true})
 });
 
-app.post('/addposts', isAuthJson, function (req, res) {
-  findBlog('username',req.session.passport.user.name,function(blog){
-    getLatest(req.session.passport.user.name,function(data){
-      var newposts = returnRole(data.data.children);
-      var oldposts = blog.posts
-      _.each(newposts,  function(newpost) {
-       if(!_.find(oldposts, function(post){ return post.id == newpost.id })){
-          blog.posts.unshift(newpost)
-       }
-      });
+app.post('/addposts', isAuthJson,findByUsername, function (req, res) {
+  getLatest(req.session.passport.user.name,function(data){
+    var newposts = returnRole(data.data.children);
+    var oldposts = req.blog.posts
+    _.each(newposts,  function(newpost) {
+     if(!_.find(oldposts, function(post){ return post.id == newpost.id })){
+        req.blog.posts.unshift(newpost)
+     }
+    });
 
-      blog.save(function (err, blog) {
-        if (err) return console.error(err);
-        console.log("saved");
-        res.json(blog)
-      });
+    req.blog.save(function (err, blog) {
+      if (err) return console.error(err);
+      console.log("saved");
+      res.json(blog)
     });
   });
 });
@@ -187,7 +188,6 @@ app.post('/setupuser', isAuthJson, function (req, res) {
     url: blogdata.url,
     redditdata:  {
       username:req.session.passport.user.name,
-      id:app.locals.user.id,
     },
   });
 
@@ -198,36 +198,32 @@ app.post('/setupuser', isAuthJson, function (req, res) {
   });
 });
 
-app.get("/account",isAuthHtml, function(req,res){
-  findBlog('username',req.session.passport.user.name,function(blog){
-    if(!blog){
-      res.render('setupaccount', { 
-        title: "Setup Account For "+req.session.passport.user.name, 
-        username: req.session.passport.user.name,
-        url: req.get('host'),
-      })
-    }
+app.get("/account",isAuthHtml,findByUsername, function(req,res){
+  if(!req.blog){
+    res.render('setupaccount', { 
+      title: "Setup Account For "+req.session.passport.user.name, 
+      username: req.session.passport.user.name,
+      url: req.get('host'),
+    })
+  }
 
-    else {
-      res.render('account', { 
-        title: "Account For "+req.session.passport.user.name, 
-        username: req.session.passport.user.name,
-        url: req.get('host'), 
-      })
-    }
-  });
+  else {
+    res.render('account', { 
+      title: "Account For "+req.session.passport.user.name, 
+      username: req.session.passport.user.name,
+      url: req.get('host'), 
+    })
+  }
 });
 
-app.get("/currentuser",isAuthJson, function(req,res){
-  findBlog('username',req.session.passport.user.name,function(blog){
-    if(blog){
-     res.json(blog);
-    }
+app.get("/currentuser",isAuthJson,findByUsername, function(req,res){
+  if(req.blog){
+   res.json(req.blog);
+  }
 
-    else{
-      res.status(400).json({ error: 'Database Error' });
-    }
-  });
+  else{
+    res.status(400).json({ error: 'Database Error' });
+  }
 });
 
 app.get("/login",function(req,res){
@@ -299,6 +295,32 @@ function isAuthJson(req, res, next) {
     res.status(400).json({ error: 'Not Logged In' })
   }
   else{ return next(); }
+}
+
+function findByUsername(req, res, next) {
+  findBlog('username',req.session.passport.user.name,function(blog){
+    if(blog){
+      req.blog = blog;
+    }
+    
+    else {
+      blog = false;
+    }
+    next();
+  });
+}
+
+function findByUrl(req, res, next) {
+  findBlog('url',req.params.url,function(blog){
+    if(blog){
+      req.blog = blog;
+    }
+    
+    else {
+      blog = false;
+    }
+    next();
+  });
 }
 
 // functions ==================================

@@ -33,15 +33,15 @@ app.controller('blogRollCtrl',['$scope','$element','$http', function($scope,$ele
   
   $http.get('/json').success(function(data) {
     $scope.allposts = data;
-    $scope.postsData = $scope.allposts.slice(0, 10);
+    $scope.postsData = $scope.allposts.slice(0, 5);
   })
 
   var cutindex = 10;
 
   $scope.getNextSet = function(){
-    var nextset = $scope.allposts.slice(cutindex, cutindex+11);
+    var nextset = $scope.allposts.slice(cutindex, cutindex+6);
     $scope.postsData = _.union( $scope.postsData,nextset);
-    cutindex=cutindex+10;
+    cutindex=cutindex+5;
   }
 }]);
 

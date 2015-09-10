@@ -2,12 +2,19 @@ include header.jade
   body
     .page.container
       header
-        h1!= title
+        h1.page-title
+          a.title-link(href="#{blogurl}") #{title}
         ul.blog-role
           li.blog-item
+            h2.post-title!= data.title
             .blog-img-holder
               a.blog-img-link
                 img.blog-img(src="#{data.imgurl}")
             .blog-info-holder
-              a.post-tile(href='#{data.permalink}')
-                h2!=data.title
+              ul.post-source-links
+                li
+                  a.post-source-link(href="#{data.permalink}") Reddit Post
+                li
+                  a.post-source-link(href="#{data.sourceurl}") Image Source
+                li
+                  a.post-source-link(href="http://reddit.com/r/#{data.cat}") Subreddit

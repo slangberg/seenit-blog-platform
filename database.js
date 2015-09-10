@@ -2,7 +2,7 @@ var mongoose = require('mongoose');
 mongoose.connect('mongodb://localhost/test');
 
 
-var  setUp = function(app){
+var setUp = function(app){
   var db = mongoose.connection;
   db.on('error', console.error.bind(console, 'connection error:'));
   db.once('open', function (callback) {
@@ -33,3 +33,11 @@ var  setUp = function(app){
     app.locals.blogObj = Blog;
   });
 }
+
+var test = function(){
+  console.log("test");
+}
+
+
+module.exports = setUp();
+module.exports = test();

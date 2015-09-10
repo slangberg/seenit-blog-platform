@@ -2,16 +2,17 @@ include header.jade
   body
     .page.container
       header
-        h1!= title
-        h2.tagline!= data.tagline 
+        h1.page-title!= title
+        h2.tagline!= data.tagline
+        p!=sourceurl
       blogroll
         .blog-scroll-box(infinite-scroll="getNextSet()", infinite-scroll-distance="3") 
         ul.blog-role
           li.blog-item(ng-animate="'animate'", ng-repeat="post in postsData")
-            .blog-img-holder
-              a.blog-img-link
-                img.blog-img(ng-src='{{post.imgurl}}')
             .blog-info-holder
-              a.post-tile(ng-href='{{post.permalink}}')
+              a.post-tile(ng-href='{{post.url}}')
                 h2 {{post.title}}
+            .blog-img-holder
+              a.blog-img-link(ng-href='#{data.url}/{{post.url}}')
+                img.blog-img(ng-src='{{post.imgurl}}')
         button(ng-click="getNextSet()")
