@@ -8,6 +8,8 @@
     "bower": "^1.4.1",
     "express": "^4.13.3",
     "express-session": "^1.11.3",
+    "gulp": "^3.9.0",
+    "gulp-watch": "^4.3.5",
     "jade": "^1.11.0",
     "lwip": "^0.0.7",
     "mongoose": "^4.1.3",

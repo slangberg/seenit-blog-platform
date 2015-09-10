@@ -10,7 +10,7 @@ var passport = require('passport')
 var RedditStrategy = require('passport-reddit').Strategy;
 var session = require('express-session')
 var keys = require('./redditkeys.js')
-
+var DB = require('./database.js')
 
 // database ==================================
 var mongoose = require('mongoose');
@@ -31,10 +31,6 @@ db.once('open', function (callback) {
     lastupdate: { type: Date, default: Date.now },
     posts:Array
   });
-
-  blogSchema.methods.testMeth = function () {
-    console.log(this.title);
-  }
 
   var Blog = mongoose.model('Blog', blogSchema);
   app.locals.blogObj = Blog;
@@ -70,7 +66,7 @@ var removeRecord = function(username){
 
 // express ==================================
 var app = express();
-
+DB.test();
 app.set('view engine', 'jade');
 app.use('/bower_components',  express.static('bower_components'));
 app.use('/public',  express.static('public'));
@@ -203,7 +199,7 @@ app.get("/account",isAuthHtml,findByUsername, function(req,res){
     res.render('setupaccount', { 
       title: "Setup Account For "+req.session.passport.user.name, 
       username: req.session.passport.user.name,
-      url: req.get('host'),
+      url: req.sourceurl,
     })
   }
 
@@ -211,7 +207,7 @@ app.get("/account",isAuthHtml,findByUsername, function(req,res){
     res.render('account', { 
       title: "Account For "+req.session.passport.user.name, 
       username: req.session.passport.user.name,
-      url: req.get('host'), 
+      url: req.sourceurl, 
     })
   }
 });
@@ -229,14 +225,14 @@ app.get("/currentuser",isAuthJson,findByUsername, function(req,res){
 app.get("/login",function(req,res){
   res.render('signin', { 
     title: "Sign In",
-    url: req.get('host')
+    url: req.sourceurl
   })
 });
 
 app.get("/",function(req,res){
   res.render('index', { 
     title: "Blog",
-    url: req.get('host')}
+    url: req.sourceurl}
   );
 });
 
@@ -271,8 +267,8 @@ passport.deserializeUser(function(obj, done) {
 });
 
 passport.use(new RedditStrategy({
-    clientID: keys.id,
-    clientSecret: keys.secret,
+    clientID: keys.keys.id,
+    clientSecret: keys.keys.secret,
     callbackURL: "http://127.0.0.1:8080/auth/reddit/callback",
     state: true
   },
