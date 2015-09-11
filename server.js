@@ -16,7 +16,7 @@ var DB = require('./database.js')
 var mongoose = require('mongoose');
 mongoose.connect('mongodb://localhost/test');
 
-
+ 'mongodb://<dbuser>:<dbpassword>@ds039421.mongolab.com:39421/heroku_71s3r4fg'
 var db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
 db.once('open', function (callback) {
