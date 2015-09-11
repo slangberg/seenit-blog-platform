@@ -10,13 +10,12 @@ var passport = require('passport')
 var RedditStrategy = require('passport-reddit').Strategy;
 var session = require('express-session')
 var keys = require('./redditkeys.js')
-var DB = require('./database.js')
+//var DB = require('./database.js')
 
 // database ==================================
 var mongoose = require('mongoose');
 mongoose.connect('mongodb://localhost/test');
 
- 'mongodb://<dbuser>:<dbpassword>@ds039421.mongolab.com:39421/heroku_71s3r4fg'
 var db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
 db.once('open', function (callback) {
@@ -66,7 +65,6 @@ var removeRecord = function(username){
 
 // express ==================================
 var app = express();
-DB.test();
 app.set('view engine', 'jade');
 app.use('/bower_components',  express.static('bower_components'));
 app.use('/public',  express.static('public'));
