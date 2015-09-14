@@ -14,7 +14,16 @@ var keys = require('./redditkeys.js')
 
 // database ==================================
 var mongoose = require('mongoose');
-mongoose.connect('mongodb://localhost/test');
+
+if(_.isUndefined(process.env)){
+  mongourl = 'mongodb://localhost/test';
+}
+
+else {
+  mongourl = process.env.MONGOLAB_URI;
+}
+
+mongoose.connect(mongourl);
 
 var db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
