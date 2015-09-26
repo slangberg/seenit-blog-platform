@@ -10,18 +10,23 @@ var passport = require('passport')
 var RedditStrategy = require('passport-reddit').Strategy;
 var session = require('express-session')
 var keys = require('./redditkeys.js')
-//var DB = require('./database.js')
 
 // database ==================================
 var mongoose = require('mongoose');
+var MongoStore = require('connect-mongo')(session);
 
-if(_.isUndefined(process.env)){
+
+console.log(process.env.MONGOLAB_URI);
+
+
+if(_.isUndefined(process.env.MONGOLAB_URI)){
   mongourl = 'mongodb://localhost/test';
 }
 
 else {
   mongourl = process.env.MONGOLAB_URI;
 }
+
 
 mongoose.connect(mongourl);
 
@@ -83,8 +88,10 @@ app.use(bodyParser.json());
 app.use(session({
   resave: false,
   saveUninitialized: false,
-  secret: 'keyboard cat'
+  secret: 'keyboard cat',
+  store: new MongoStore({ mongooseConnection: mongoose.connection })
 }));
+
 app.listen(8080);
 app.locals.tempposts = [];
 
