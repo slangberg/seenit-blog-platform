@@ -18,7 +18,7 @@ var MongoStore = require('connect-mongo')(session);
 
 console.log(process.env.MONGOLAB_URI);
 
-
+//this sets the local database also stuff for herkcu
 if(_.isUndefined(process.env.MONGOLAB_URI)){
   mongourl = 'mongodb://localhost/test';
 }
@@ -33,6 +33,7 @@ mongoose.connect(mongourl);
 var db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
 db.once('open', function (callback) {
+  // this sets up the stucutre  of  a single blog this is the docuemnt in mongo
   var blogSchema = mongoose.Schema({
     title:  String,
     tagline: String,
@@ -45,13 +46,18 @@ db.once('open', function (callback) {
     posts:Array
   });
 
+
+ //using mongopos this sets up an object you read from and write to
   var Blog = mongoose.model('Blog', blogSchema);
+  //sores it in app locals a constant
   app.locals.blogObj = Blog;
 });
 
 
+//this is is a method to read from mongo and return result into a call back
 var findRecord = function (username,callback){
   console.log('find for username: '+username);
+  //looks for blog docuemnts that match username
   app.locals.blogObj.findOne({ 'redditdata.username': username }).exec(function (err, blog) {
     if (err) return handleError(err);
     if(!blog){
@@ -63,6 +69,10 @@ var findRecord = function (username,callback){
     }
   })
 }
+
+
+//this is is a method to write to mongo and return result into a call back
+
 
 var saveRecord = function(blogObj){
   blogObj.save(function (err, blog) {
@@ -89,6 +99,7 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   secret: 'keyboard cat',
+  //this sets up a session store in mongo, i know this is probably very wrong
   store: new MongoStore({ mongooseConnection: mongoose.connection })
 }));
 
@@ -96,28 +107,31 @@ app.listen(8080);
 app.locals.tempposts = [];
 
 
+//this is setup to get subpages to link to assets do to a werid pathing thing, also prob wrong
 app.use(function (req, res, next) {
   req.sourceurl = req.protocol + '://' + req.get('host');
   next();
 });
 
 
+//this get a users post from sessionsn, i think as a way to prevent non signed in users acesssing end point
 app.get("/json",function(req,res){
   if(req.session.posts){
     res.json(req.session.posts);
   }
-  
+
   else {
     res.status(400).json({ error: 'no posts' })
   }
 });
+-
 
-
+//point to routes for each blog
 app.get("/b/:url/",findByUrl,function(req,res){
   if(req.blog){
     req.session.username = req.blog.redditdata.username;
     req.session.posts = req.blog.posts
-    res.render('blog', {
+    res.render('blog', { //this adds locals including the asset path
       title: req.blog.title,
       data: req.blog,
       url: req.sourceurl,
@@ -125,14 +139,17 @@ app.get("/b/:url/",findByUrl,function(req,res){
   }
 
   else{
-    res.render('404', { 
-      url: req.sourceurl, 
+    res.render('404', {
+      url: req.sourceurl,
     })
   }
 });
 
+
+//go to a post page
+
 app.get("/b/:url/:posturl",function(req,res){
-  findBlog('url',req.params.url,function(blog){ 
+  findBlog('url',req.params.url,function(blog){
     if(blog){
       req.session.username = blog.redditdata.username;
       req.session.posts = blog.posts
@@ -147,16 +164,18 @@ app.get("/b/:url/:posturl",function(req,res){
     }
 
     else{
-      res.render('404', { 
-        url: req.sourceurl, 
+      res.render('404', {
+        url: req.sourceurl,
       })
     }
   });
 });
 
+
+//this checks to see if a user submitted blog url is avaible
 app.post('/checkurl', isAuthJson, function (req, res) {
   var url = req.body.url
-  findBlog('url',url,function(status){ 
+  findBlog('url',url,function(status){
     if(status){
       res.json({notavailble:true})
     }
@@ -167,15 +186,20 @@ app.post('/checkurl', isAuthJson, function (req, res) {
   });
 });
 
+//this is the delete route
 app.post('/removeuser', isAuthJson, function (req, res) {
+  //this log url chian is cause the passsport user app was not persisting data off keys
   removeRecord(req.session.passport.user.name);
   res.json({removed:true})
 });
 
+//this fuction adds posts
 app.post('/addposts', isAuthJson,findByUsername, function (req, res) {
   getLatest(req.session.passport.user.name,function(data){
     var newposts = returnRole(data.data.children);
     var oldposts = req.blog.posts
+
+    //this will only save new posts
     _.each(newposts,  function(newpost) {
      if(!_.find(oldposts, function(post){ return post.id == newpost.id })){
         req.blog.posts.unshift(newpost)
@@ -189,7 +213,7 @@ app.post('/addposts', isAuthJson,findByUsername, function (req, res) {
     });
   });
 });
-
+//this will create a new doucment in the store
 app.post('/setupuser', isAuthJson, function (req, res) {
   blogdata = req.body.blogdata
   app.locals.currblog = new app.locals.blogObj({
@@ -208,24 +232,27 @@ app.post('/setupuser', isAuthJson, function (req, res) {
   });
 });
 
+//for acount page
 app.get("/account",isAuthHtml,findByUsername, function(req,res){
   if(!req.blog){
-    res.render('setupaccount', { 
-      title: "Setup Account For "+req.session.passport.user.name, 
+    res.render('setupaccount', {
+      title: "Setup Account For "+req.session.passport.user.name,
       username: req.session.passport.user.name,
       url: req.sourceurl,
     })
   }
 
   else {
-    res.render('account', { 
-      title: "Account For "+req.session.passport.user.name, 
+    res.render('account', {
+      title: "Account For "+req.session.passport.user.name,
       username: req.session.passport.user.name,
-      url: req.sourceurl, 
+      url: req.sourceurl,
     })
   }
 });
 
+
+// gets the current usersn blog
 app.get("/currentuser",isAuthJson,findByUsername, function(req,res){
   if(req.blog){
    res.json(req.blog);
@@ -237,14 +264,14 @@ app.get("/currentuser",isAuthJson,findByUsername, function(req,res){
 });
 
 app.get("/login",function(req,res){
-  res.render('signin', { 
+  res.render('signin', {
     title: "Sign In",
     url: req.sourceurl
   })
 });
 
 app.get("/",function(req,res){
-  res.render('index', { 
+  res.render('index', {
     title: "Blog",
     url: req.sourceurl}
   );
@@ -259,7 +286,7 @@ app.get('/auth/reddit/callback', passport.authenticate('reddit', {
 
 app.get('/logout', function(req, res){
   req.logout();
-  delete req.session.passport; 
+  delete req.session.passport;
   res.redirect('/login');
 });
 
@@ -280,6 +307,7 @@ passport.deserializeUser(function(obj, done) {
   done(null, obj);
 });
 
+//pasport is a oauth tokens  manamge
 passport.use(new RedditStrategy({
     clientID: keys.keys.id,
     clientSecret: keys.keys.secret,
@@ -312,7 +340,7 @@ function findByUsername(req, res, next) {
     if(blog){
       req.blog = blog;
     }
-    
+
     else {
       blog = false;
     }
@@ -325,7 +353,7 @@ function findByUrl(req, res, next) {
     if(blog){
       req.blog = blog;
     }
-    
+
     else {
       blog = false;
     }
@@ -422,7 +450,7 @@ var returnRole = function(posts,comments){
       return false;
     }
 
-    
+
   });
 
   //downloadImgs(cleaned);
@@ -444,14 +472,14 @@ var downloadImgs = function(posts){
             console.log("download")
             console.log(err);
             return;
-          } 
-    
+          }
+
           imgsizer.open(__dirname + url, function(err, image){
             if (err){
               console.log("sizer open");
               console.log(err);
               return;
-            } 
+            }
 
             if(image.width() > 980){
               var shrinkval = 980/image.width();
@@ -462,7 +490,7 @@ var downloadImgs = function(posts){
                     console.log("sizer write");
                     console.log(err);
                     return;
-                  } 
+                  }
 
                   post.localimgurl = url;
                 });
@@ -479,12 +507,9 @@ var downloadImgs = function(posts){
       }
     });
 
-    
+
   });
 
 
   return posts;
 }
-
-
-
